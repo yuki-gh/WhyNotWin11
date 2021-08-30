@@ -6,9 +6,9 @@
 #AutoIt3Wrapper_UseX64=Y
 #AutoIt3Wrapper_Res_Comment=https://www.whynotwin11.org
 #AutoIt3Wrapper_Res_Description=Detection Script to help identify why your PC isn't Windows 11 Release Ready
-#AutoIt3Wrapper_Res_Fileversion=2.4.0.0
+#AutoIt3Wrapper_Res_Fileversion=2.4.1.0
 #AutoIt3Wrapper_Res_ProductName=WhyNotWin11
-#AutoIt3Wrapper_Res_ProductVersion=2.4.0
+#AutoIt3Wrapper_Res_ProductVersion=2.4.1
 #AutoIt3Wrapper_Res_LegalCopyright=Robert Maehl, using LGPL 3 License
 #AutoIt3Wrapper_Res_Language=1033
 #AutoIt3Wrapper_Res_requestedExecutionLevel=asInvoker
@@ -21,13 +21,13 @@
 #AutoIt3Wrapper_Res_Icon_Add=Assets\Settings.ico
 #AutoIt3Wrapper_Res_Icon_Add=Assets\Info.ico
 #AutoIt3Wrapper_AU3Check_Parameters=-d -w 1 -w 2 -w 3 -w 4 -w 5 -w 6 -w 7 -v1 -v2 -v3
-#AutoIt3Wrapper_Run_Tidy=y
+#AutoIt3Wrapper_Run_Tidy=n
 #Tidy_Parameters=/tc 0 /serc /scec
 #AutoIt3Wrapper_Run_Au3Stripper=Y
 #Au3Stripper_Parameters=/so
 #EndRegion ;**** Directives created by AutoIt3Wrapper_GUI ****
 
-Global $sVersion = "2.4.0.0"
+Global $sVersion = "2.4.1.0"
 FileChangeDir(@SystemDir)
 
 #include <File.au3>
@@ -132,28 +132,30 @@ Func ProcessCMDLine()
 									Exit 1
 							EndSwitch
 					EndSelect
+					If UBound($CmdLine) = 1 Then ExitLoop
 				Case "/s", "/silent"
 					$bSilent = True
 					_ArrayDelete($CmdLine, 1)
 					If UBound($CmdLine) = 1 Then ExitLoop
 				Case "/u", "/update"
 					Select
-						Case UBound($CmdLine) = 1
-							InetGet("https://WhyNotWin11.org/releases/latest/download/WhyNotWin11.exe", "WhyNotWin11_Latest.exe")
+						Case UBound($CmdLine) = 2
+							InetGet("https://WhyNotWin11.org/releases/latest/download/WhyNotWin11.exe", @ScriptDir & "WhyNotWin11_Latest.exe")
 							_ArrayDelete($CmdLine, 1)
-						Case UBound($CmdLine) > 1 And $CmdLine[2] = "dev"
-							InetGet("https://nightly.link/rcmaehl/WhyNotWin11/workflows/wnw11/main/WNW11.zip", "WhyNotWin11_dev.exe")
+						Case UBound($CmdLine) > 2 And $CmdLine[2] = "dev"
+							InetGet("https://nightly.link/rcmaehl/WhyNotWin11/workflows/wnw11/main/WNW11.zip", @ScriptDir & "WhyNotWin11_dev.exe")
 							_ArrayDelete($CmdLine, "1-2")
-						Case UBound($CmdLine) > 1 And $CmdLine[2] = "release"
-							InetGet("https://WhyNotWin11.org/releases/latest/download/WhyNotWin11.exe", "WhyNotWin11_Latest.exe")
+						Case UBound($CmdLine) > 2 And $CmdLine[2] = "release"
+							InetGet("https://WhyNotWin11.org/releases/latest/download/WhyNotWin11.exe", @ScriptDir & "WhyNotWin11_Latest.exe")
 							_ArrayDelete($CmdLine, "1-2")
 						Case StringLeft($CmdLine[2], 1) = "/"
-							InetGet("https://WhyNotWin11.org/releases/latest/download/WhyNotWin11.exe", "WhyNotWin11_Latest.exe")
+							InetGet("https://WhyNotWin11.org/releases/latest/download/WhyNotWin11.exe", @ScriptDir & "WhyNotWin11_Latest.exe")
 							_ArrayDelete($CmdLine, 1)
 						Case Else
 							MsgBox(0, "Invalid", 'Invalid release type - "' & $CmdLine[2] & "." & @CRLF)
 							Exit 1
 					EndSelect
+					If UBound($CmdLine) = 1 Then ExitLoop
 				Case Else
 					If @Compiled Then ; support for running non-compiled script - mLipok
 						MsgBox(0, "Invalid", 'Invalid switch - "' & $CmdLine[$iLoop] & "." & @CRLF)
@@ -521,8 +523,8 @@ Func Main(ByRef $aResults, ByRef $aOutput)
 					_GUICtrlSetState($hCheck[2][0], $iWarn)
 					GUICtrlSetData($hCheck[2][2], _Translate($iMUI, "Error Accessing List"))
 				Case 3
-					_GUICtrlSetState($hCheck[2][0], $iUnsure)
-					GUICtrlSetData($hCheck[2][2], _Translate($iMUI, "Not Currently Listed as Compatible"))
+					_GUICtrlSetState($hCheck[2][0], $iFail)
+					GUICtrlSetData($hCheck[2][2], _Translate($iMUI, "Not Supported"))
 			EndSwitch
 		Case Else
 			_GUICtrlSetState($hCheck[2][0], $iPass)
