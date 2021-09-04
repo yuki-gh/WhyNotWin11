@@ -82,15 +82,21 @@ Func _CPUSpeedCheck()
 EndFunc   ;==>_CPUSpeedCheck
 
 Func _DirectXStartCheck()
-	Local $aReturn[2]
+	Local $aReturn[3]
 	Local $hDXFile = _TempFile(@TempDir, "dxdiag")
 	$aReturn[0] = $hDXFile
 	$aReturn[1] = Run(@SystemDir & "\dxdiag.exe /whql:off /t " & $hDXFile)
+	$aReturn[2] = TimerInit()
 	Return $aReturn
 EndFunc   ;==>_DirectXStartCheck
 
-Func _GetDirectXCheck($aArray)
-	If Not ProcessExists($aArray[1]) And FileExists($aArray[0]) Then
+Func _GetDirectXCheck(ByRef $aArray)
+	ConsoleWrite(TimerDiff($aArray[2]) & @CRLF)
+	If TimerDiff($aArray[2]) > 120000 Then
+		FileDelete($aArray[0])
+		Return SetError(0, 2, False)
+	ElseIf Not ProcessExists($aArray[1]) Then
+		MsgBox(0, "", 1)
 		Local $sDXFile = StringStripWS(StringStripCR(FileRead($aArray[0])), $STR_STRIPALL)
 		Select
 			Case StringInStr($sDXFile, "FeatureLevels:12") Or StringInStr($sDXFile, "DDIVersion:12") And StringInStr($sDXFile, "DriverModel:WDDM" & Chr(160) & "3") ; Non-English Languages
@@ -110,7 +116,7 @@ Func _GetDirectXCheck($aArray)
 			Case StringInStr($sDXFile, "DDIVersion:12") And Not StringInStr($sDXFile, "DriverModel:WDDM2")
 				Return SetError(2, 0, False)
 			Case Else
-				Return False
+				Return SetError(0, 1, False)
 		EndSelect
 		FileDelete($aArray[0])
 	Else

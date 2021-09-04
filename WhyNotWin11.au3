@@ -67,22 +67,6 @@ Opt("GUIResizeMode", $GUI_DOCKSIZE)
 
 ExtractFiles()
 
-#Region ; OS Checks
-Switch @OSVersion
-	Case "WIN_7", "WIN_VISTA", "WIN_XP", "WIN_XPe"
-		MsgBox($MB_ICONWARNING, _Translate(@MUILang, "Not Supported"), @OSVersion & " " & _Translate(@MUILang, "Not Supported"))
-		Exit 1
-	Case "WIN_8", "WIN_8.1"
-		MsgBox($MB_ICONWARNING, _Translate(@MUILang, "Warning"), StringReplace(_Translate(@MUILang, "May Report DirectX 12 Incorrectly"), '#', @OSVersion))
-	Case Else
-		;;;
-EndSwitch
-
-If @OSBuild >= 22000 Or _WinAPI_GetProcAddress(_WinAPI_GetModuleHandle(@SystemDir & "\ntdll.dll"), "wine_get_host_version") Then
-	MsgBox($MB_ICONWARNING, _Translate(@MUILang, "Not Supported"), _Translate(@MUILang, "You're running the latest build!"))
-EndIf
-#EndRegion
-
 ProcessCMDLine()
 
 Func ProcessCMDLine()
@@ -164,6 +148,33 @@ Func ProcessCMDLine()
 			EndSwitch
 		Next
 	EndIf
+
+	#Region ; OS Checks
+	Switch @OSVersion
+		Case "WIN_7", "WIN_VISTA", "WIN_XP", "WIN_XPe"
+			If $bSilent Then
+				Exit 10 ; ERROR_BAD_ENVIRONMENT
+			Else
+				MsgBox($MB_ICONWARNING, _Translate(@MUILang, "Not Supported"), @OSVersion & " " & _Translate(@MUILang, "Not Supported"))
+			EndIf
+		Case "WIN_8", "WIN_8.1"
+			If $bSilent Then
+				Exit 10 ; ERROR_BAD_ENVIRONMENT
+			Else
+				MsgBox($MB_ICONWARNING, _Translate(@MUILang, "Warning"), StringReplace(_Translate(@MUILang, "May Report DirectX 12 Incorrectly"), '#', @OSVersion))
+			EndIf
+		Case Else
+			;;;
+	EndSwitch
+
+	If @OSBuild >= 22000 Or _WinAPI_GetProcAddress(_WinAPI_GetModuleHandle(@SystemDir & "\ntdll.dll"), "wine_get_host_version") Then
+		If $bSilent Then
+			Exit 10 ; ERROR_BAD_ENVIRONMENT
+		Else
+			MsgBox($MB_ICONWARNING, _Translate(@MUILang, "Not Supported"), _Translate(@MUILang, "You're running the latest build!"))
+		EndIf
+	EndIf
+	#EndRegion
 
 	If Not $bSilent Then ProgressOn("WhyNotWin11", _Translate(@MUILang, "Loading WMIC"))
 
@@ -265,6 +276,7 @@ Func Main(ByRef $aResults, ByRef $aOutput)
 
 	Local Enum $iFail = 0, $iPass, $iUnsure, $iWarn
 	Local Enum $iBackground = 0, $iText, $iSidebar, $iFooter
+	#forceref $iUnsure
 
 	Local Const $DPI_RATIO = _GDIPlus_GraphicsGetDPIRatio()[0]
 	Local Enum $FontSmall, $FontMedium, $FontLarge, $FontExtraLarge
@@ -706,8 +718,9 @@ Func Main(ByRef $aResults, ByRef $aOutput)
 				#ce
 
 				; DirectX 12 takes a while. Grab the result once done
-			Case IsArray($aDirectX) And (Not ProcessExists($aDirectX[1])) And FileExists($aDirectX[0])
-				Switch _GetDirectXCheck($aDirectX)
+			Case IsArray($aDirectX)
+				$aDirectX = _GetDirectXCheck($aDirectX)
+				Switch $aDirectX
 					Case 2
 						_GUICtrlSetState($hCheck[5][0], $iPass)
 						GUICtrlSetData($hCheck[5][2], "DirectX 12 && WDDM 3")   ; <== No translation, "DirectX 12 and WDDM 3" in LANG-file
@@ -716,6 +729,15 @@ Func Main(ByRef $aResults, ByRef $aOutput)
 						GUICtrlSetData($hCheck[5][2], "DirectX 12 && WDDM 2")   ; <== No translation, "DirectX 12 and WDDM 2" in LANG-file
 					Case Else
 						Switch @error
+							Case 0
+								Switch @extended
+									Case 1
+										_GUICtrlSetState($hCheck[5][0], $iUnsure)
+										GUICtrlSetData($hCheck[5][2], _Translate($iMUI, "DxDiag Errored"))
+									Case 2
+										_GUICtrlSetState($hCheck[5][0], $iUnsure)
+										GUICtrlSetData($hCheck[5][2], _Translate($iMUI, "Check Timed Out"))
+								EndSwitch
 							Case 1
 								_GUICtrlSetState($hCheck[5][0], $iPass)
 								GUICtrlSetData($hCheck[5][2], _Translate($iMUI, "No DirectX 12, but WDDM2"))
@@ -727,7 +749,6 @@ Func Main(ByRef $aResults, ByRef $aOutput)
 								GUICtrlSetData($hCheck[5][2], _Translate($iMUI, "No DirectX 12 or WDDM2"))
 						EndSwitch
 				EndSwitch
-				$aDirectX = Null
 
 			Case $hMsg = $hDumpLang
 				FileDelete(@LocalAppDataDir & "\WhyNotWin11\langs\")
